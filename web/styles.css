@@ -1,0 +1,5 @@
+body { font-family: ui-sans-serif, system-ui, Segoe UI, Arial; margin: 2rem; }
+main { max-width: 600px; }
+#msg { width: 60%; padding: .4rem; }
+#send { padding: .45rem .8rem; }
+#out { background: #f6f6f6; padding: 1rem; min-height: 3rem; }
