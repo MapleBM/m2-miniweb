@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import argparse
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
@@ -25,7 +26,6 @@ class AppHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
 
-        # API endpoint: /api/echo?msg=hello
         if parsed.path == "/api/echo":
             qs = parse_qs(parsed.query)
             msg = (qs.get("msg") or [""])[0]
@@ -38,33 +38,34 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.wfile.write(data)
             return
 
-        # Static: map "/" -> /web/index.html; else serve from /web
-        self.serve_static(parsed.path)
+        # Serve static from ./web
+        super().do_GET()
 
     def translate_path(self, path: str) -> str:
-        # Map HTTP path -> filesystem path under WEB_DIR
         if path == "/":
             path = "/index.html"
         return str(WEB_DIR / path.lstrip("/"))
 
-    def serve_static(self, path: str) -> None:
-        # Delegate to SimpleHTTPRequestHandler machinery
-        super().do_GET()
-
-def make_server(port: int = 8000) -> Tuple[HTTPServer, int]:
-    # Build the HTTP server
-    httpd = HTTPServer(("127.0.0.1", port), AppHandler)
+def make_server(host: str = "127.0.0.1", port: int = 8000) -> Tuple[HTTPServer, int]:
+    httpd = HTTPServer((host, port), AppHandler)
     return httpd, httpd.server_port
 
-def run(blocking: bool = True, port: int = 8000):
-    httpd, port = make_server(port)
+def run(blocking: bool = True, host: str = "127.0.0.1", port: int = 8000):
+    httpd, port = make_server(host=host, port=port)
     if blocking:
-        print(f"Serving on http://127.0.0.1:{port}")
+        print(f"Serving on http://{host}:{port}")
         httpd.serve_forever()
     else:
         t = threading.Thread(target=httpd.serve_forever, daemon=True)
         t.start()
         return httpd, port, t
 
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="miniweb", description="Tiny stdlib web app")
+    p.add_argument("--host", default="127.0.0.1", help="Host interface (default: 127.0.0.1)")
+    p.add_argument("--port", default=8000, type=int, help="Port (default: 8000)")
+    return p
+
 if __name__ == "__main__":
-    run(blocking=True, port=8000)
+    args = _build_parser().parse_args()
+    raise SystemExit(run(blocking=True, host=args.host, port=args.port))
