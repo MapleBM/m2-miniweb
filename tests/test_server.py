@@ -39,3 +39,19 @@ def test_serves_index_html():
             assert "<title>M2 Miniweb</title>" in html
     finally:
         httpd.shutdown()
+
+def test_404_for_missing_static():
+    port = _free_port()
+    httpd, _, t = server.run(blocking=False, port=port)
+    try:
+        time.sleep(0.05)
+        try:
+            urlopen(f"http://127.0.0.1:{port}/nope.css")
+            assert False, "Expected HTTPError for 404"
+        except URLError as e:
+            # URLError wraps HTTPError; check code via .reason if available
+            if hasattr(e, "reason") and hasattr(e.reason, "code"):
+                assert e.reason.code == 404
+    finally:
+        httpd.shutdown()
+
